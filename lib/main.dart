@@ -41,18 +41,16 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _init() async {
-    // Oturum kontrolü
+
     final value = await HelperFunction.getUserLoggedInStatus();
     if (value != null) {
       setState(() => _isSignedIn = value);
     }
 
-    // Provider'ı güncelle
     if (mounted) {
       await context.read<AppProvider>().loadUser();
     }
 
-    // Bildirim servisi
     await _notificationService.initialize();
     final userEmail = await HelperFunction.getUserEmailSF();
     if (userEmail != null) {
@@ -73,12 +71,12 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
         textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6A11CB), // Deep Purple
+          seedColor: const Color(0xFF6A11CB), 
           primary: const Color(0xFF6A11CB),
-          secondary: const Color(0xFF2575FC), // Neon Blue
+          secondary: const Color(0xFF2575FC), 
           brightness: Brightness.light,
         ),
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA), // Off-white
+        scaffoldBackgroundColor: const Color(0xFFF8F9FA), 
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
           foregroundColor: Color(0xFF1E1E1E),
@@ -106,7 +104,7 @@ class _MyAppState extends State<MyApp> {
           secondary: const Color(0xFF2575FC),
           brightness: Brightness.dark,
         ),
-        scaffoldBackgroundColor: const Color(0xFF0F172A), // Gece mavisi
+        scaffoldBackgroundColor: const Color(0xFF0F172A), 
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
@@ -128,12 +126,12 @@ class _MyAppState extends State<MyApp> {
 
   Widget _getInitialPage() {
     if (!_isSignedIn) return const LoginPage();
-    
+
     final user = FirebaseAuth.instance.currentUser;
     if (user != null && !user.emailVerified) {
       return const EmailVerificationPage();
     }
-    
+
     return const HomePage();
   }
 }

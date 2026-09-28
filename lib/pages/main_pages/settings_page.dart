@@ -23,6 +23,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   String? _userName;
   String? _userEmail;
+  String? _usernameId;
 
   @override
   void initState() {
@@ -33,10 +34,24 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _loadUserData() async {
     final name = await HelperFunction.getUserNameSF();
     final email = await HelperFunction.getUserEmailSF();
+    final notifs = await HelperFunction.getNotificationsEnabled();
+    final online = await HelperFunction.getShowOnlineStatus();
+
+    String? username;
+    if (email != null) {
+      final userData = await _databaseService.getUserByEmail(email);
+      if (userData != null) {
+        username = userData['username'];
+      }
+    }
+
     if (!mounted) return;
     setState(() {
       _userName = name;
       _userEmail = email;
+      _notificationsEnabled = notifs;
+      _showOnlineStatus = online;
+      _usernameId = username;
     });
   }
 
@@ -51,13 +66,13 @@ class _SettingsPageState extends State<SettingsPage> {
       subtitle: 'Profil, güvenlik ve uygulama tercihlerini yönet.',
       icon: Icons.settings_outlined,
       children: [
-        // ── Profil Kartı ──
+
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF2D7CE)),
+            border: Border.all(color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE2D5F8)),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x0F000000),
@@ -68,7 +83,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           child: Row(
             children: [
-              // Profil fotoğrafı
+
               GestureDetector(
                 onTap: _pickProfilePhoto,
                 child: Stack(
@@ -77,7 +92,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE46D4E),
+                        color: const Color(0xFF6A11CB),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       clipBehavior: Clip.antiAlias,
@@ -91,7 +106,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         width: 22,
                         height: 22,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE46D4E),
+                          color: const Color(0xFF6A11CB),
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2),
                         ),
@@ -115,6 +130,17 @@ class _SettingsPageState extends State<SettingsPage> {
                         color: isDark ? Colors.white : const Color(0xFF24354E),
                       ),
                     ),
+                    if (_usernameId != null && _usernameId!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        '@$_usernameId',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     Text(
                       _userEmail ?? 'email@example.com',
@@ -128,7 +154,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               IconButton(
                 icon: const Icon(Icons.edit_outlined,
-                    color: Color(0xFFE46D4E)),
+                    color: Color(0xFF6A11CB)),
                 onPressed: _editName,
                 tooltip: 'İsim değiştir',
               ),
@@ -145,25 +171,34 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ),
         const SizedBox(height: 12),
-        // Bildirimler
+
         _SettingSwitchTile(
           title: 'Bildirimler',
           subtitle: 'Yeni mesajlar ve grup aktiviteleri için bildirim al.',
           value: _notificationsEnabled,
           icon: Icons.notifications_none_outlined,
-          onChanged: (value) => setState(() => _notificationsEnabled = value),
+          onChanged: (val) {
+            setState(() => _notificationsEnabled = val);
+            HelperFunction.saveNotificationsEnabled(val);
+          },
         ),
         const SizedBox(height: 12),
-        // Çevrimiçi durumu
+
         _SettingSwitchTile(
           title: 'Çevrimiçi durumu',
           subtitle: 'Aktiflik durumunu diğer kullanıcılara göster.',
           value: _showOnlineStatus,
           icon: Icons.visibility_outlined,
-          onChanged: (value) => setState(() => _showOnlineStatus = value),
+          onChanged: (val) {
+            setState(() => _showOnlineStatus = val);
+            HelperFunction.saveShowOnlineStatus(val);
+            if (_userEmail != null) {
+              _databaseService.setUserOnlineStatus(_userEmail!, val);
+            }
+          },
         ),
         const SizedBox(height: 12),
-        // Karanlık mod
+
         _SettingSwitchTile(
           title: 'Karanlık Mod',
           subtitle: 'Uygulamayı koyu temada kullan.',
@@ -199,7 +234,7 @@ class _SettingsPageState extends State<SettingsPage> {
           child: ElevatedButton.icon(
             onPressed: _logout,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE46D4E),
+              backgroundColor: const Color(0xFF6A11CB),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -217,7 +252,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // ── Profil fotoğrafı — Storage devre dışı ──
   Future<void> _pickProfilePhoto() async {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -242,7 +276,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // ── İsim düzenleme ──
   Future<void> _editName() async {
     final ctrl = TextEditingController(text: _userName);
     final newName = await showDialog<String>(
@@ -289,7 +322,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // ── Çıkış yap ──
   Future<void> _logout() async {
     await _authService.signOut();
     await HelperFunction.clearUserData();
@@ -304,10 +336,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 }
-
-// ─────────────────────────────────────────────
-// Switch Tile Widget
-// ─────────────────────────────────────────────
 
 class _SettingSwitchTile extends StatelessWidget {
   const _SettingSwitchTile({
@@ -332,7 +360,7 @@ class _SettingSwitchTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF2D7CE)),
+        border: Border.all(color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE2D5F8)),
       ),
       child: Row(
         children: [
@@ -340,10 +368,10 @@ class _SettingSwitchTile extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF2A1C18) : const Color(0xFFFFF0EA),
+              color: isDark ? const Color(0xFF1E1528) : const Color(0xFFF4F0FA),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: const Color(0xFFE46D4E)),
+            child: Icon(icon, color: const Color(0xFF6A11CB)),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -372,7 +400,7 @@ class _SettingSwitchTile extends StatelessWidget {
           ),
           Switch(
             value: value,
-            activeThumbColor: const Color(0xFFE46D4E),
+            activeThumbColor: const Color(0xFF6A11CB),
             onChanged: onChanged,
           ),
         ],

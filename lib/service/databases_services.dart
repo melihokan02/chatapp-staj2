@@ -13,18 +13,45 @@ class DatabaseService {
   final CollectionReference friendsCollection =
       FirebaseFirestore.instance.collection('friends');
 
-  // ─────────────────────────────────────────────
-  // KULLANICI
-  // ─────────────────────────────────────────────
-
-  Future updateUserData(String fullName, String email) async {
+  Future updateUserData(String fullName, String email, String username) async {
     return await userCollection.doc(uid).set({
       'fullName': fullName,
       'email': email,
+      'username': username,
       'groups': [],
       'profilePic': '',
       'uid': uid,
     });
+  }
+
+  Future<bool> checkUsernameUnique(String username) async {
+    final QuerySnapshot snapshot = await userCollection
+        .where('username', isEqualTo: username)
+        .limit(1)
+        .get();
+    return snapshot.docs.isEmpty;
+  }
+
+  Future<Map<String, dynamic>?> getUserByUsername(String input) async {
+    QuerySnapshot snapshot = await userCollection
+        .where('username', isEqualTo: input)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isNotEmpty) return snapshot.docs.first.data() as Map<String, dynamic>;
+
+    snapshot = await userCollection
+        .where('fullName', isEqualTo: input)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isNotEmpty) return snapshot.docs.first.data() as Map<String, dynamic>;
+
+    snapshot = await userCollection
+        .where('email', isEqualTo: input)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isNotEmpty) return snapshot.docs.first.data() as Map<String, dynamic>;
+
+    return null;
   }
 
   Future<Map<String, dynamic>?> getUserData() async {
@@ -44,7 +71,6 @@ class DatabaseService {
     return userCollection.snapshots();
   }
 
-  /// Belirli bir kullanıcının anlık verisini dinle (Örn: isOnline, lastSeen)
   Stream<QuerySnapshot> getUserStreamByEmail(String email) {
     return userCollection.where('email', isEqualTo: email).limit(1).snapshots();
   }
@@ -89,17 +115,11 @@ class DatabaseService {
     }
   }
 
-  // ─────────────────────────────────────────────
-  // ARKADAŞLIK SİSTEMİ
-  // ─────────────────────────────────────────────
-
-  /// Benzersiz arkadaşlık belgesi ID'si üretir.
   String _friendDocId(String emailA, String emailB) {
     final sorted = [emailA, emailB]..sort();
     return sorted.join('__');
   }
 
-  /// Arkadaşlık isteği gönder (status: 'pending').
   Future<void> sendFriendRequest({
     required String fromEmail,
     required String fromName,
@@ -116,28 +136,21 @@ class DatabaseService {
     });
   }
 
-  /// Arkadaşlık isteğini kabul et (status: 'accepted').
   Future<void> acceptFriendRequest(String fromEmail, String toEmail) async {
     final docId = _friendDocId(fromEmail, toEmail);
     await friendsCollection.doc(docId).update({'status': 'accepted'});
   }
 
-  /// Arkadaşlık isteğini reddet veya arkadaşlıktan çıkar.
   Future<void> removeFriend(String emailA, String emailB) async {
     final docId = _friendDocId(emailA, emailB);
     await friendsCollection.doc(docId).delete();
   }
 
-  /// Kullanıcının arkadaşlık belgelerini akış olarak dinle.
   Stream<QuerySnapshot> getFriendsStream(String userEmail) {
     return friendsCollection
         .where('users', arrayContains: userEmail)
         .snapshots();
   }
-
-  // ─────────────────────────────────────────────
-  // DİREKT SOHBET ODASI
-  // ─────────────────────────────────────────────
 
   String buildDirectChatRoomId(String userEmail, String otherUserEmail) {
     final orderedEmails = [userEmail, otherUserEmail]..sort();
@@ -176,10 +189,6 @@ class DatabaseService {
         .where('users', arrayContains: userEmail)
         .snapshots();
   }
-
-  // ─────────────────────────────────────────────
-  // MESAJLAR (DİREKT)
-  // ─────────────────────────────────────────────
 
   Stream<QuerySnapshot> getChatMessages(String chatRoomId) {
     return chatroomCollection
@@ -272,18 +281,17 @@ class DatabaseService {
     });
   }
 
-  // ─────────────────────────────────────────────
-  // YAZMA DURUMU
-  // ─────────────────────────────────────────────
-
   Future<void> setUserTypingStatus(
-      String chatRoomId, String userEmail, bool isTyping) async {
+      String chatRoomId, String userEmail, String userName, bool isTyping) async {
     final DocumentReference typingRef = chatroomCollection
         .doc(chatRoomId)
         .collection('typing')
         .doc(userEmail);
     if (isTyping) {
-      await typingRef.set({'timestamp': FieldValue.serverTimestamp()});
+      await typingRef.set({
+        'timestamp': FieldValue.serverTimestamp(),
+        'userName': userName,
+      });
     } else {
       await typingRef.delete();
     }
@@ -295,10 +303,6 @@ class DatabaseService {
         .collection('typing')
         .snapshots();
   }
-
-  // ─────────────────────────────────────────────
-  // GRUPLAR
-  // ─────────────────────────────────────────────
 
   Stream<QuerySnapshot> getGroupsStream(String userEmail) {
     return groupCollection
@@ -406,10 +410,6 @@ class DatabaseService {
         .update({'message': newText, 'edited': true});
   }
 
-  // ─────────────────────────────────────────────
-  // MESAJ ARAMA
-  // ─────────────────────────────────────────────
-
   Future<List<Map<String, dynamic>>> searchMessages(
       String chatRoomId, String query) async {
     final snapshot = await chatroomCollection
@@ -422,5 +422,20 @@ class DatabaseService {
             .contains(query.toLowerCase()))
         .map((doc) => doc.data())
         .toList();
+  }
+
+  Stream<QuerySnapshot> getUnreadMessagesStream(String chatRoomId) {
+    return chatroomCollection.doc(chatRoomId).collection('messages').where('isRead', isEqualTo: false).snapshots();
+  }
+
+  Future<void> markMessagesAsRead(String chatRoomId, String currentUserEmail) async {
+    final snapshot = await chatroomCollection.doc(chatRoomId).collection('messages').where('isRead', isEqualTo: false).get();
+    final batch = FirebaseFirestore.instance.batch();
+    for (final doc in snapshot.docs) {
+      if (doc['senderEmail'] != currentUserEmail) {
+        batch.update(doc.reference, {'isRead': true});
+      }
+    }
+    await batch.commit();
   }
 }

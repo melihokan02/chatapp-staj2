@@ -58,13 +58,13 @@ class _FriendsPageState extends State<FriendsPage>
             end: Alignment.bottomCenter,
             colors: isDark 
                 ? [const Color(0xFF1A1513), const Color(0xFF121212)]
-                : [const Color(0xFFFFF8F5), Colors.white],
+                : [const Color(0xFFF4F0FA), Colors.white],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              // Header
+
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
                 child: Column(
@@ -85,28 +85,28 @@ class _FriendsPageState extends State<FriendsPage>
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide:
-                              BorderSide(color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF2D7CE)),
+                              BorderSide(color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE2D5F8)),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide:
-                              BorderSide(color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF2D7CE)),
+                              BorderSide(color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE2D5F8)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: const BorderSide(
-                              color: Color(0xFFE46D4E), width: 1.2),
+                              color: Color(0xFF6A11CB), width: 1.2),
                         ),
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
                     const SizedBox(height: 12),
-                    // Tabs
+
                     TabBar(
                       controller: _tabController,
-                      labelColor: const Color(0xFFE46D4E),
+                      labelColor: const Color(0xFF6A11CB),
                       unselectedLabelColor: isDark ? Colors.grey[400] : const Color(0xFF8B8B8B),
-                      indicatorColor: const Color(0xFFE46D4E),
+                      indicatorColor: const Color(0xFF6A11CB),
                       dividerColor: Colors.transparent,
                       labelStyle: const TextStyle(
                           fontSize: 13, fontWeight: FontWeight.bold),
@@ -121,7 +121,7 @@ class _FriendsPageState extends State<FriendsPage>
                   ],
                 ),
               ),
-              // Tab içerikleri
+
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
@@ -138,14 +138,14 @@ class _FriendsPageState extends State<FriendsPage>
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _sendFriendRequest,
-        backgroundColor: const Color(0xFFE46D4E),
+        backgroundColor: const Color(0xFF6A11CB),
+        foregroundColor: Colors.white,
         icon: const Icon(Icons.person_add_outlined),
         label: const Text('Arkadaş Ekle'),
       ),
     );
   }
 
-  // ── Mevcut arkadaşlar sekmesi ──
   Widget _buildFriendsTab() {
     final currentEmail = _currentUserEmail;
     if (currentEmail == null) {
@@ -216,16 +216,21 @@ class _FriendsPageState extends State<FriendsPage>
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.chat_bubble_outline,
-                          color: Color(0xFFE46D4E), size: 20),
-                      onPressed: () =>
-                          _openDirectChat(peerEmail, peerName),
-                      tooltip: 'Mesaj gönder',
+                    FilledButton.icon(
+                      onPressed: () => _openDirectChat(peerEmail, peerName),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF6A11CB).withOpacity(0.1),
+                        foregroundColor: const Color(0xFF6A11CB),
+                        elevation: 0,
+                      ),
+                      icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                      label: const Text('Mesaj'),
                     ),
+                    const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.person_remove_outlined,
                           color: Colors.red, size: 20),
+                      style: IconButton.styleFrom(backgroundColor: Colors.red.withOpacity(0.1)),
                       onPressed: () =>
                           _confirmRemoveFriend(peerEmail, peerName),
                       tooltip: 'Arkadaşlıktan çıkar',
@@ -241,7 +246,6 @@ class _FriendsPageState extends State<FriendsPage>
     );
   }
 
-  // ── Gelen istekler sekmesi ──
   Widget _buildRequestsTab() {
     final currentEmail = _currentUserEmail;
     if (currentEmail == null) {
@@ -284,70 +288,28 @@ class _FriendsPageState extends State<FriendsPage>
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFF2D7CE)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x0F000000),
-                      blurRadius: 14,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
+              child: FeatureCard(
+                title: senderName,
+                subtitle: senderEmail,
+                leadingIcon: Icons.person_add_alt_1_outlined,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF0EA),
-                        borderRadius: BorderRadius.circular(14),
+                    FilledButton.icon(
+                      onPressed: () => _acceptRequest(senderEmail, currentEmail),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.green.withOpacity(0.15),
+                        foregroundColor: Colors.green,
+                        elevation: 0,
                       ),
-                      child: Center(
-                        child: Text(
-                          senderName.isNotEmpty
-                              ? senderName[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFFE46D4E),
-                          ),
-                        ),
-                      ),
+                      icon: const Icon(Icons.check, size: 16),
+                      label: const Text('Kabul Et'),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(senderName,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF24354E))),
-                          Text(senderEmail,
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF8B8B8B))),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.check_circle,
-                          color: Colors.green),
-                      onPressed: () => _acceptRequest(
-                          senderEmail, currentEmail),
-                      tooltip: 'Kabul et',
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.cancel, color: Colors.red),
-                      onPressed: () =>
-                          _databaseService.removeFriend(
-                              senderEmail, currentEmail),
+                      icon: const Icon(Icons.close, color: Colors.red, size: 20),
+                      style: IconButton.styleFrom(backgroundColor: Colors.red.withOpacity(0.1)),
+                      onPressed: () => _databaseService.removeFriend(senderEmail, currentEmail),
                       tooltip: 'Reddet',
                     ),
                   ],
@@ -360,7 +322,6 @@ class _FriendsPageState extends State<FriendsPage>
     );
   }
 
-  // ── Keşfet sekmesi — tüm kullanıcılar ──
   Widget _buildDiscoverTab() {
     final currentEmail = _currentUserEmail;
     if (currentEmail == null) {
@@ -381,9 +342,10 @@ class _FriendsPageState extends State<FriendsPage>
           final data = doc.data() as Map<String, dynamic>;
           final email = (data['email'] as String? ?? '').toLowerCase();
           final name = (data['fullName'] as String? ?? '').toLowerCase();
+          final username = (data['username'] as String? ?? '').toLowerCase();
           if (email == currentEmail.toLowerCase()) return false;
           return query.isEmpty ||
-              email.contains(query) ||
+              username.contains(query) ||
               name.contains(query);
         }).toList();
 
@@ -414,6 +376,7 @@ class _FriendsPageState extends State<FriendsPage>
                 final fullName =
                     data['fullName'] as String? ?? 'Kullanıcı';
                 final email = data['email'] as String? ?? '';
+                final username = data['username'] as String? ?? 'Bilinmeyen Kullanıcı';
                 final isAlreadyFriend =
                     pendingOrFriends.contains(email);
 
@@ -421,19 +384,20 @@ class _FriendsPageState extends State<FriendsPage>
                   padding: const EdgeInsets.only(bottom: 12),
                   child: FeatureCard(
                     title: fullName,
-                    subtitle: email,
+                    subtitle: '@$username',
                     leadingIcon: Icons.account_circle_outlined,
                     trailing: isAlreadyFriend
-                        ? const Icon(Icons.check,
-                            color: Colors.green, size: 20)
-                        : IconButton(
-                            icon: const Icon(
-                                Icons.person_add_outlined,
-                                color: Color(0xFFE46D4E),
-                                size: 20),
-                            onPressed: () =>
-                                _quickSendRequest(email, fullName),
-                            tooltip: 'İstek gönder',
+                        ? const Icon(Icons.check_circle,
+                            color: Colors.green, size: 24)
+                        : FilledButton.icon(
+                            onPressed: () => _quickSendRequest(email, fullName),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF6A11CB).withOpacity(0.1),
+                              foregroundColor: const Color(0xFF6A11CB),
+                              elevation: 0,
+                            ),
+                            icon: const Icon(Icons.person_add_outlined, size: 16),
+                            label: const Text('Ekle'),
                           ),
                     onTap: null,
                   ),
@@ -446,9 +410,8 @@ class _FriendsPageState extends State<FriendsPage>
     );
   }
 
-  // ── Arkadaşlık isteği gönder (dialog) ──
   Future<void> _sendFriendRequest() async {
-    final emailCtrl = TextEditingController();
+    final usernameCtrl = TextEditingController();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final confirmed = await showDialog<bool>(
@@ -483,7 +446,7 @@ class _FriendsPageState extends State<FriendsPage>
               ),
               const SizedBox(height: 16),
               Text(
-                'Arkadaşlık İsteği Gönder',
+                'Arkadaş Ekle',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -493,12 +456,12 @@ class _FriendsPageState extends State<FriendsPage>
               ),
               const SizedBox(height: 24),
               TextField(
-                controller: emailCtrl,
-                keyboardType: TextInputType.emailAddress,
+                controller: usernameCtrl,
+                keyboardType: TextInputType.text,
                 style: TextStyle(color: isDark ? Colors.white : Colors.black),
                 decoration: modernTextInputDecoration(context).copyWith(
-                  labelText: 'E-posta adresi',
-                  prefixIcon: const Icon(FluentIcons.mail_24_regular),
+                  labelText: 'Kullanıcı Adı (örn: ahmet123)',
+                  prefixIcon: const Icon(FluentIcons.person_board_24_regular),
                 ),
               ),
               const SizedBox(height: 24),
@@ -539,15 +502,15 @@ class _FriendsPageState extends State<FriendsPage>
 
     if (confirmed != true) return;
 
-    final toEmail = emailCtrl.text.trim();
+    final targetUsername = usernameCtrl.text.trim();
     final currentEmail = _currentUserEmail;
     final currentName = _currentUserName ?? 'Kullanıcı';
 
-    if (currentEmail == null || toEmail.isEmpty || toEmail == currentEmail) {
+    if (currentEmail == null || targetUsername.isEmpty) {
       return;
     }
 
-    final userData = await _databaseService.getUserByEmail(toEmail);
+    final userData = await _databaseService.getUserByUsername(targetUsername);
     if (!mounted) return;
     if (userData == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -556,11 +519,19 @@ class _FriendsPageState extends State<FriendsPage>
       return;
     }
 
+    final toEmail = userData['email'] as String?;
+    if (toEmail == null || toEmail == currentEmail) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Geçersiz işlem.')),
+      );
+      return;
+    }
+
     await _databaseService.sendFriendRequest(
       fromEmail: currentEmail,
       fromName: currentName,
       toEmail: toEmail,
-      toName: userData['fullName'] as String? ?? toEmail,
+      toName: userData['fullName'] as String? ?? targetUsername,
     );
 
     if (!mounted) return;
@@ -571,7 +542,6 @@ class _FriendsPageState extends State<FriendsPage>
     );
   }
 
-  // ── Keşfet'ten hızlı istek gönder ──
   Future<void> _quickSendRequest(String toEmail, String toName) async {
     final currentEmail = _currentUserEmail;
     final currentName = _currentUserName ?? 'Kullanıcı';
@@ -684,11 +654,11 @@ class _FriendHeader extends StatelessWidget {
           width: 88,
           height: 88,
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF2A1C18) : const Color(0xFFFFE2D8),
+            color: isDark ? const Color(0xFF1E1528) : const Color(0xFFE9E0F8),
             borderRadius: BorderRadius.circular(28),
           ),
           child: const Icon(Icons.people_outline,
-              size: 36, color: Color(0xFFE46D4E)),
+              size: 36, color: Color(0xFF6A11CB)),
         ),
         const SizedBox(height: 16),
         Text(

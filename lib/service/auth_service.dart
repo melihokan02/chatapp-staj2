@@ -9,9 +9,8 @@ class AuthService {
 
   FirebaseAuth get firebaseAuth => _auth;
 
-  // ─── Kayıt — başarıda null, hata kodunu string döner ───
   Future<String?> registerWithEmailAndPasswordDetailed(
-      String fullName, String email, String password) async {
+      String fullName, String email, String password, String username) async {
     try {
       final UserCredential result =
           await firebaseAuth.createUserWithEmailAndPassword(
@@ -21,10 +20,15 @@ class AuthService {
       final User? user = result.user;
       if (user == null) return 'unknown';
 
+      final isUnique = await DatabaseService(uid: user.uid).checkUsernameUnique(username);
+      if (!isUnique) {
+        await user.delete();
+        return 'username-taken';
+      }
+
       await user.updateDisplayName(fullName);
-      await DatabaseService(uid: user.uid).updateUserData(fullName, email);
-      
-      // E-posta doğrulama gönder (Eğer onaylı değilse)
+      await DatabaseService(uid: user.uid).updateUserData(fullName, email, username);
+
       if (!user.emailVerified) {
         await user.sendEmailVerification();
       }
@@ -34,14 +38,13 @@ class AuthService {
       await HelperFunction.saveUserEmailSF(email);
 
       debugPrint('Register success: ${user.uid}');
-      return null; // başarı
+      return null; 
     } on FirebaseAuthException catch (e) {
       debugPrint('Register failed: ${e.code}');
       return e.code;
     }
   }
 
-  // ─── Giriş — başarıda null, hata kodunu string döner ───
   Future<String?> signInWithEmailAndPasswordDetailed(
       String email, String password) async {
     try {
@@ -69,18 +72,17 @@ class AuthService {
       }
 
       debugPrint('Login success: ${user.uid}');
-      return null; // başarı
+      return null; 
     } on FirebaseAuthException catch (e) {
       debugPrint('Login failed: ${e.code}');
       return e.code;
     }
   }
 
-  // ─── Şifre Sıfırlama ───
   Future<String?> sendPasswordResetEmail(String email) async {
     try {
       await firebaseAuth.sendPasswordResetEmail(email: email);
-      return null; // başarı
+      return null; 
     } on FirebaseAuthException catch (e) {
       return e.code;
     } catch (e) {
@@ -88,11 +90,10 @@ class AuthService {
     }
   }
 
-  // ─── Eski metodlar (geriye uyumluluk) ───
   Future<bool> registerWithEmailAndPassword(
       String fullName, String email, String password) async {
     final result = await registerWithEmailAndPasswordDetailed(
-        fullName, email, password);
+        fullName, email, password, '');
     return result == null;
   }
 
@@ -112,7 +113,6 @@ class AuthService {
     await HelperFunction.saveUserLoggedInStatus(false);
   }
 
-  /// Mevcut kullanıcının şifresini günceller.
   Future<String?> updatePassword(String newPassword) async {
     try {
       await firebaseAuth.currentUser?.updatePassword(newPassword);

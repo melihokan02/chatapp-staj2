@@ -49,7 +49,7 @@ class _GroupsPageState extends State<GroupsPage> {
       icon: Icons.groups_outlined,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _createGroup,
-        backgroundColor: const Color(0xFFE46D4E),
+        backgroundColor: const Color(0xFF6A11CB),
         icon: const Icon(Icons.group_add_outlined),
         label: const Text('Yeni Grup', style: TextStyle(color: Colors.white)),
       ),
@@ -135,7 +135,7 @@ class _GroupsPageState extends State<GroupsPage> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    // Üye yönetim butonu
+
                     GestureDetector(
                       onTap: () => _showGroupOptions(doc.id, groupName,
                           members, data['creatorEmail'] as String? ?? ''),
@@ -143,7 +143,7 @@ class _GroupsPageState extends State<GroupsPage> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFE2D8),
+                          color: const Color(0xFFE9E0F8),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -151,7 +151,7 @@ class _GroupsPageState extends State<GroupsPage> {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : const Color(0xFFE46D4E),
+                            color: isDark ? Colors.white : const Color(0xFF6A11CB),
                           ),
                         ),
                       ),
@@ -216,8 +216,8 @@ class _GroupsPageState extends State<GroupsPage> {
                             Navigator.pop(ctx);
                             _addMemberDialog(groupId);
                           },
-                          icon: const Icon(Icons.person_add_outlined, color: Color(0xFFE46D4E)),
-                          label: const Text('Üye Ekle', style: TextStyle(color: Color(0xFFE46D4E))),
+                          icon: const Icon(Icons.person_add_outlined, color: Color(0xFF6A11CB)),
+                          label: const Text('Üye Ekle', style: TextStyle(color: Color(0xFF6A11CB))),
                         )
                       : const SizedBox.shrink(),
                 ],
@@ -235,18 +235,18 @@ class _GroupsPageState extends State<GroupsPage> {
 
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: const Color(0xFFFFE2D8),
+                      backgroundColor: const Color(0xFFE9E0F8),
                       child: Text(
                         memberEmail.isNotEmpty
                             ? memberEmail[0].toUpperCase()
                             : '?',
-                        style: const TextStyle(color: Color(0xFFE46D4E)),
+                        style: const TextStyle(color: Color(0xFF6A11CB)),
                       ),
                     ),
                     title: Text(memberEmail),
                     subtitle: isCreator
                         ? const Text('Kurucu',
-                            style: TextStyle(color: Color(0xFFE46D4E)))
+                            style: TextStyle(color: Color(0xFF6A11CB)))
                         : null,
                     trailing: (_currentUserEmail == creatorEmail && !isCreator)
                         ? IconButton(
@@ -270,18 +270,16 @@ class _GroupsPageState extends State<GroupsPage> {
     );
   }
 
-  // ── Üye ekle dialog ──
   Future<void> _addMemberDialog(String groupId) async {
-    final emailCtrl = TextEditingController();
+    final usernameCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Üye Ekle'),
         content: TextField(
-          controller: emailCtrl,
-          keyboardType: TextInputType.emailAddress,
+          controller: usernameCtrl,
           decoration: const InputDecoration(
-            labelText: 'Kullanıcı e-postası',
+            labelText: 'Kullanıcı adı (@olmadan)',
             border: OutlineInputBorder(),
           ),
         ),
@@ -297,10 +295,10 @@ class _GroupsPageState extends State<GroupsPage> {
     );
 
     if (confirmed != true) return;
-    final email = emailCtrl.text.trim();
-    if (email.isEmpty) return;
+    final targetUsername = usernameCtrl.text.trim();
+    if (targetUsername.isEmpty) return;
 
-    final userData = await _databaseService.getUserByEmail(email);
+    final userData = await _databaseService.getUserByUsername(targetUsername);
     if (!mounted) return;
     if (userData == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -309,21 +307,22 @@ class _GroupsPageState extends State<GroupsPage> {
       return;
     }
 
+    final targetEmail = userData['email'] as String;
+
     await _databaseService.addMemberToGroup(
       groupId: groupId,
-      memberEmail: email,
-      memberName: userData['fullName'] as String? ?? email,
+      memberEmail: targetEmail,
+      memberName: targetUsername,
     );
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-          content: Text('$email gruba eklendi!'),
+          content: Text('@$targetUsername gruba eklendi!'),
           backgroundColor: Colors.green),
     );
   }
 
-  // ── Grup oluştur ──
   Future<void> _createGroup() async {
     _groupNameController.clear();
     final result = await showDialog<bool>(

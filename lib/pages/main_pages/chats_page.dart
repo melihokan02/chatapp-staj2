@@ -49,7 +49,7 @@ class _ChatsPageState extends State<ChatsPage> {
       icon: Icons.chat_bubble_outline,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _pickUserForNewChat,
-        backgroundColor: const Color(0xFFE46D4E),
+        backgroundColor: const Color(0xFF6A11CB),
         icon: const Icon(Icons.add_comment_outlined),
         label: const Text('Yeni Sohbet', style: TextStyle(color: Colors.white)),
       ),
@@ -67,16 +67,16 @@ class _ChatsPageState extends State<ChatsPage> {
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF2D7CE)),
+              borderSide: BorderSide(color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE2D5F8)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF2D7CE)),
+              borderSide: BorderSide(color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE2D5F8)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide:
-                  const BorderSide(color: Color(0xFFE46D4E), width: 1.2),
+                  const BorderSide(color: Color(0xFF6A11CB), width: 1.2),
             ),
           ),
           onChanged: (_) => setState(() {}),
@@ -156,16 +156,25 @@ class _ChatsPageState extends State<ChatsPage> {
           children: filteredDocs.map((doc) {
             final data = doc.data() as Map<String, dynamic>;
             final roomId = doc.id;
-            final roomName = data['chatRoomName'] as String? ?? 'Sohbet';
-            final lastMessage =
-                data['lastMessage'] as String? ?? 'Mesaj yok';
+            final lastMessage = data['lastMessage'] as String? ?? 'Mesaj yok';
             final lastSender = data['lastMessageSender'] as String? ?? '';
-            final members =
-                (data['users'] as List<dynamic>? ?? []).cast<String>();
-            final peerEmail = members.firstWhere(
-              (email) => email != currentUserEmail,
-              orElse: () => roomName,
-            );
+            String roomName = data['chatRoomName'] as String? ?? 'Sohbet';
+            String peerEmail = '';
+            final members = (data['users'] as List<dynamic>? ?? []).cast<String>();
+            final memberNames = (data['userNames'] as List<dynamic>? ?? []).cast<String>();
+
+            if (members.length == 2 && memberNames.length == 2) {
+              final peerIndex = members.indexOf(currentUserEmail) == 0 ? 1 : 0;
+              roomName = memberNames[peerIndex];
+              peerEmail = members[peerIndex];
+            } else {
+              peerEmail = members.firstWhere(
+                (email) => email != currentUserEmail,
+                orElse: () => roomName,
+              );
+            }
+
+            if (roomName.trim().isEmpty) roomName = 'Kullanıcı';
             final avatarLabel = _avatarLabel(roomName);
             final updatedAt = data['updatedAt'] as Timestamp?;
             final timeText = updatedAt == null
@@ -174,14 +183,25 @@ class _ChatsPageState extends State<ChatsPage> {
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: FeatureCard(
-                title: roomName,
-                subtitle: lastSender.isEmpty
-                    ? lastMessage
-                    : '$lastSender: $lastMessage',
-                leadingIcon: Icons.person_outline,
-                badge: null,
-                trailing: Text(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _databaseService.getUnreadMessagesStream(roomId),
+                builder: (context, unreadSnapshot) {
+                  int unreadCount = 0;
+                  if (unreadSnapshot.hasData) {
+                    unreadCount = unreadSnapshot.data!.docs
+                        .where((doc) => doc['senderEmail'] != currentUserEmail)
+                        .length;
+                  }
+                  final badgeText = unreadCount > 0 ? unreadCount.toString() : null;
+
+                  return FeatureCard(
+                    title: roomName,
+                    subtitle: lastSender.isEmpty
+                        ? lastMessage
+                        : '$lastSender: $lastMessage',
+                    leadingIcon: Icons.person_outline,
+                    badge: badgeText,
+                    trailing: Text(
                   timeText,
                   style: const TextStyle(
                     fontSize: 11,
@@ -203,7 +223,9 @@ class _ChatsPageState extends State<ChatsPage> {
                     ),
                   );
                 },
-              ),
+              );
+            },
+          ),
             );
           }).toList(),
         );
@@ -211,7 +233,6 @@ class _ChatsPageState extends State<ChatsPage> {
     );
   }
 
-  /// Kullanıcı listesinden seçerek yeni sohbet başlat.
   Future<void> _pickUserForNewChat() async {
     final currentUserEmail = _currentUserEmail;
     final currentUserName = _currentUserName ?? 'Me';
@@ -235,7 +256,7 @@ class _ChatsPageState extends State<ChatsPage> {
           databaseService: _databaseService,
           onUserSelected: (otherEmail, otherName) async {
             Navigator.pop(ctx);
-            // Yükleniyor dialogu
+
             showDialog(
               context: context,
               barrierDismissible: false,
@@ -249,8 +270,8 @@ class _ChatsPageState extends State<ChatsPage> {
                 otherUserName: otherName,
               );
               if (!mounted) return;
-              Navigator.pop(context); // loading dialogunu kapat
-              
+              Navigator.pop(context); 
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -265,7 +286,7 @@ class _ChatsPageState extends State<ChatsPage> {
               );
             } catch (e) {
               if (mounted) {
-                Navigator.pop(context); // loading dialogunu kapat
+                Navigator.pop(context); 
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Sohbet başlatılamadı: $e')),
                 );
@@ -286,7 +307,6 @@ class _ChatsPageState extends State<ChatsPage> {
   }
 }
 
-/// Kullanıcı seçme bottom sheet
 class _UserPickerSheet extends StatefulWidget {
   const _UserPickerSheet({
     required this.scrollController,
@@ -347,7 +367,7 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
               hintText: 'İsim veya e-posta ara',
               prefixIcon: const Icon(Icons.search_rounded),
               filled: true,
-              fillColor: const Color(0xFFF9F3F0),
+              fillColor: const Color(0xFFF4F0FA),
               contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16, vertical: 12),
               border: OutlineInputBorder(
@@ -402,13 +422,13 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
 
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: const Color(0xFFFFE2D8),
+                      backgroundColor: const Color(0xFFE9E0F8),
                       child: Text(
                         name.isNotEmpty
                             ? name[0].toUpperCase()
                             : '?',
                         style: const TextStyle(
-                            color: Color(0xFFE46D4E),
+                            color: Color(0xFF6A11CB),
                             fontWeight: FontWeight.w700),
                       ),
                     ),

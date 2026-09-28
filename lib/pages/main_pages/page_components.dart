@@ -249,13 +249,13 @@ class InputChipButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: selected 
-              ? const Color(0xFFE46D4E) 
+              ? const Color(0xFF6A11CB) 
               : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected 
-                ? const Color(0xFFE46D4E) 
-                : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF2D7CE)),
+                ? const Color(0xFF6A11CB) 
+                : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE2D5F8)),
           ),
         ),
         child: Row(
@@ -264,7 +264,7 @@ class InputChipButton extends StatelessWidget {
             Icon(
               icon,
               size: 18,
-              color: selected ? Colors.white : const Color(0xFFE46D4E),
+              color: selected ? Colors.white : const Color(0xFF6A11CB),
             ),
             const SizedBox(width: 8),
             Text(

@@ -34,7 +34,7 @@ class _ChatConversationPageState extends State<ChatConversationPage>
   String? _currentUserName;
   bool _isTyping = false;
   final Set<String> _locallyMarkedAsRead = {};
-  
+
   String? _replyToText;
   String? _replyToSender;
 
@@ -61,7 +61,10 @@ class _ChatConversationPageState extends State<ChatConversationPage>
       _currentUserName = currentUserName ?? 'Me';
     });
     if (_currentUserEmail != null) {
-      await _databaseService.setUserOnlineStatus(_currentUserEmail!, true);
+      bool showOnline = await HelperFunction.getShowOnlineStatus() ?? true;
+      if (showOnline) {
+        await _databaseService.setUserOnlineStatus(_currentUserEmail!, true);
+      }
     }
   }
 
@@ -72,7 +75,7 @@ class _ChatConversationPageState extends State<ChatConversationPage>
     if (_currentUserEmail != null) {
       _databaseService.setUserOnlineStatus(_currentUserEmail!, false);
       if (_isTyping) {
-        _databaseService.setUserTypingStatus(widget.chatId, _currentUserEmail!, false);
+        _databaseService.setUserTypingStatus(widget.chatId, _currentUserEmail!, _currentUserName ?? 'Kullanıcı', false);
       }
     }
     super.dispose();
@@ -87,7 +90,11 @@ class _ChatConversationPageState extends State<ChatConversationPage>
       }
     } else {
       if (_currentUserEmail != null) {
-        _databaseService.setUserOnlineStatus(_currentUserEmail!, true);
+        HelperFunction.getShowOnlineStatus().then((showOnline) {
+          if (showOnline ?? true) {
+            _databaseService.setUserOnlineStatus(_currentUserEmail!, true);
+          }
+        });
       }
     }
   }
@@ -107,11 +114,11 @@ class _ChatConversationPageState extends State<ChatConversationPage>
           children: [
             CircleAvatar(
               radius: 18,
-              backgroundColor: const Color(0xFFFFE2D8),
+              backgroundColor: const Color(0xFFE9E0F8),
               child: Text(
                 widget.avatarLabel,
                 style: const TextStyle(
-                  color: Color(0xFFE46D4E),
+                  color: Color(0xFF6A11CB),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -141,17 +148,17 @@ class _ChatConversationPageState extends State<ChatConversationPage>
                             final userData = snapshot.data!.docs.first.data() as Map<String, dynamic>;
                             final isOnline = userData['isOnline'] ?? false;
                             final lastSeen = userData['lastSeen'];
-                            
-                            String statusText = widget.subtitle; // Varsayılan: email
-                            
+
+                            String statusText = widget.subtitle; 
+
                             if (isOnline) {
                               statusText = 'Çevrimiçi';
                             } else if (lastSeen != null) {
-                              // Tarih hesaplama
+
                               final date = lastSeen.toDate();
                               final now = DateTime.now();
                               final difference = now.difference(date);
-                              
+
                               if (difference.inMinutes < 1) {
                                 statusText = 'Az önce görüldü';
                               } else if (difference.inMinutes < 60) {
@@ -164,7 +171,7 @@ class _ChatConversationPageState extends State<ChatConversationPage>
                                 statusText = 'Son görülme: ${date.day}/${date.month}/${date.year} $timeStr';
                               }
                             }
-                            
+
                             return Text(
                               statusText,
                               style: TextStyle(
@@ -204,7 +211,7 @@ class _ChatConversationPageState extends State<ChatConversationPage>
             end: Alignment.bottomCenter,
             colors: isDark 
                 ? [const Color(0xFF1A1513), const Color(0xFF121212)]
-                : [const Color(0xFFFFF8F5), Colors.white],
+                : [const Color(0xFFF4F0FA), Colors.white],
           ),
         ),
         child: Column(
@@ -233,6 +240,19 @@ class _ChatConversationPageState extends State<ChatConversationPage>
                         style: TextStyle(color: Color(0xFF8B8B8B)),
                       ),
                     );
+                  }
+
+                  if (_currentUserEmail != null && !widget.isGroupChat) {
+                    final hasUnread = messages.any((doc) {
+                      final d = doc.data() as Map<String, dynamic>;
+                      return d['senderEmail'] != _currentUserEmail &&
+                             d['isRead'] == false;
+                    });
+                    if (hasUnread) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                         _databaseService.markMessagesAsRead(widget.chatId, _currentUserEmail!);
+                      });
+                    }
                   }
 
                   return ListView.builder(
@@ -360,19 +380,18 @@ class _ChatConversationPageState extends State<ChatConversationPage>
             StreamBuilder<QuerySnapshot>(
               stream: _databaseService.getTypingUsers(widget.chatId),
               builder: (context, snapshot) {
-                final typingUsers = snapshot.data?.docs
-                        .map((doc) => doc.id)
-                        .toList() ??
-                    [];
-                typingUsers
-                    .removeWhere((email) => email == _currentUserEmail);
-                if (typingUsers.isEmpty) return const SizedBox.shrink();
+                    final typingNames = snapshot.data?.docs.map((doc) {
+                      final data = doc.data() as Map<String, dynamic>?;
+                      return data?['userName'] as String? ?? doc.id;
+                    }).toList() ?? [];
+                    typingNames.removeWhere((name) => name == (_currentUserName ?? 'Me') || name == _currentUserEmail);
+                    if (typingNames.isEmpty) return const SizedBox.shrink();
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 4),
-                  child: Text(
-                    '${typingUsers.first} yazıyor...',
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 4),
+                      child: Text(
+                        '${typingNames.first} yazıyor...',
                     style: const TextStyle(
                       fontSize: 12,
                       fontStyle: FontStyle.italic,
@@ -387,9 +406,9 @@ class _ChatConversationPageState extends State<ChatConversationPage>
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF2D7CE).withOpacity(0.4),
+                  color: const Color(0xFFE2D5F8).withOpacity(0.4),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE46D4E).withOpacity(0.2)),
+                  border: Border.all(color: const Color(0xFF6A11CB).withOpacity(0.2)),
                 ),
                 child: Row(
                   children: [
@@ -397,7 +416,7 @@ class _ChatConversationPageState extends State<ChatConversationPage>
                       width: 4,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE46D4E),
+                        color: const Color(0xFF6A11CB),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -409,7 +428,7 @@ class _ChatConversationPageState extends State<ChatConversationPage>
                           Text(
                             _replyToSender ?? '',
                             style: const TextStyle(
-                              color: Color(0xFFE46D4E),
+                              color: Color(0xFF6A11CB),
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
                             ),
@@ -454,12 +473,11 @@ class _ChatConversationPageState extends State<ChatConversationPage>
 
     if (checkDate == today) return 'Bugün';
     if (checkDate == yesterday) return 'Dün';
-    
+
     final months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
     return '${date.day} ${months[date.month - 1]} ${date.year != now.year ? date.year : ''}'.trim();
   }
 
-  // ── Reaksiyon ──
   Future<void> _toggleReaction(String messageId, String emoji) async {
     if (_currentUserEmail == null) return;
     try {
@@ -471,15 +489,13 @@ class _ChatConversationPageState extends State<ChatConversationPage>
     }
   }
 
-  // ── Yazma durumu ──
   Future<void> _setTypingStatus(bool isTyping) async {
     if (_currentUserEmail == null || isTyping == _isTyping) return;
     setState(() => _isTyping = isTyping);
     await _databaseService.setUserTypingStatus(
-        widget.chatId, _currentUserEmail!, isTyping);
+        widget.chatId, _currentUserEmail!, _currentUserName ?? 'Kullanıcı', isTyping);
   }
 
-  // ── Resim gönder (Storage devre dışı — Blaze plan gerekli) ──
   Future<void> _sendImageMessage() async {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -504,25 +520,90 @@ class _ChatConversationPageState extends State<ChatConversationPage>
     );
   }
 
-  // ── Mesaj sil ──
   Future<void> _deleteMessage(String messageId) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Mesajı Sil'),
-        content: const Text('Bu mesajı silmek istediğinizden emin misiniz?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('İptal')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[700]),
-            child: const Text('Sil',
-                style: TextStyle(color: Colors.white)),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+            border: Border.all(color: isDark ? Colors.white12 : Colors.grey.withOpacity(0.1)),
           ),
-        ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(FluentIcons.delete_24_filled, size: 40, color: Colors.red),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Mesajı Sil',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : const Color(0xFF24354E),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Bu mesajı herkesten silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? Colors.white70 : const Color(0xFF8B8B8B),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('İptal', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: const Text('Sil', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
     if (confirm != true) return;
@@ -535,11 +616,10 @@ class _ChatConversationPageState extends State<ChatConversationPage>
     }
   }
 
-  // ── Mesaj düzenle ──
   Future<void> _editMessage(String messageId, String currentText) async {
     final controller = TextEditingController(text: currentText);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     final newText = await showDialog<String>(
       context: context,
       builder: (ctx) => Dialog(
@@ -623,7 +703,6 @@ class _ChatConversationPageState extends State<ChatConversationPage>
     }
   }
 
-  // ── Sesli/Görüntülü Arama ──
   void _showCallDialog(BuildContext context, bool isVideo) {
     showDialog(
       context: context,
@@ -654,7 +733,6 @@ class _ChatConversationPageState extends State<ChatConversationPage>
     );
   }
 
-  // ── Mesaj gönder ──
   Future<void> _sendMessage() async {
     final message = _messageController.text.trim();
     final currentUserEmail = _currentUserEmail;
@@ -684,14 +762,10 @@ class _ChatConversationPageState extends State<ChatConversationPage>
         replyToSender: _replyToSender,
       );
     }
-    
+
     _cancelReply();
   }
 }
-
-// ─────────────────────────────────────────────────────────
-// MESSAGE BUBBLE
-// ─────────────────────────────────────────────────────────
 
 class _MessageBubble extends StatefulWidget {
   const _MessageBubble({
@@ -900,7 +974,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFFE46D4E),
+                          color: Color(0xFF6A11CB),
                         ),
                       ),
                     ),
@@ -919,7 +993,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                             width: 3,
                             height: 30,
                             decoration: BoxDecoration(
-                              color: widget.isMe ? Colors.white : const Color(0xFFE46D4E),
+                              color: widget.isMe ? Colors.white : const Color(0xFF6A11CB),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
@@ -933,7 +1007,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    color: widget.isMe ? Colors.white : const Color(0xFFE46D4E),
+                                    color: widget.isMe ? Colors.white : const Color(0xFF6A11CB),
                                   ),
                                 ),
                                 const SizedBox(height: 2),
@@ -952,7 +1026,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                         ],
                       ),
                     ),
-                  // Resim
+
                   if (widget.fileUrl != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
@@ -971,7 +1045,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                     ),
                   if (widget.fileUrl != null)
                     const SizedBox(height: 4),
-                  // Mesaj metni
+
                   Text(
                     widget.text,
                     style: TextStyle(
@@ -1009,7 +1083,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                         Icon(
                           Icons.done_all,
                           size: 14,
-                          // Mavi = okundu, gri = iletildi
+
                           color: isRead
                               ? Colors.lightBlueAccent
                               : Colors.white70,
@@ -1053,10 +1127,6 @@ class _MessageBubbleState extends State<_MessageBubble> {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────
-// MESSAGE COMPOSER
-// ─────────────────────────────────────────────────────────
 
 class _MessageComposer extends StatefulWidget {
   const _MessageComposer({

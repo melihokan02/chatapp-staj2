@@ -43,7 +43,6 @@ class HelperFunction {
     return sf.getString(userEmailKey);
   }
 
-  /// Tema modu kaydet: 'light' | 'dark' | 'system'
   static Future<void> saveThemeMode(String mode) async {
     SharedPreferences sf = await SharedPreferences.getInstance();
     await sf.setString(userThemeModeKey, mode);
@@ -52,5 +51,25 @@ class HelperFunction {
   static Future<String> getThemeMode() async {
     SharedPreferences sf = await SharedPreferences.getInstance();
     return sf.getString(userThemeModeKey) ?? 'system';
+  }
+
+  static Future<void> saveNotificationsEnabled(bool enabled) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    await sf.setBool('NOTIFICATIONS_ENABLED', enabled);
+  }
+
+  static Future<bool> getNotificationsEnabled() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getBool('NOTIFICATIONS_ENABLED') ?? true;
+  }
+
+  static Future<void> saveShowOnlineStatus(bool enabled) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    await sf.setBool('SHOW_ONLINE_STATUS', enabled);
+  }
+
+  static Future<bool> getShowOnlineStatus() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getBool('SHOW_ONLINE_STATUS') ?? true;
   }
 }

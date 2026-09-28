@@ -1,6 +1,8 @@
 import 'package:chatapp/pages/auth/email_verification_page.dart';
+import 'package:chatapp/components/chat_animation.dart';
 import 'package:chatapp/widget/widgets.dart';
 import 'package:chatapp/service/auth_service.dart';
+import 'package:chatapp/service/databases_services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -19,6 +21,7 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
@@ -27,6 +30,7 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   void dispose() {
     _fullNameController.dispose();
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
@@ -43,6 +47,8 @@ class _RegisterPageState extends State<RegisterPage> {
         return 'Şifre çok zayıf. Lütfen daha güçlü bir şifre seçin.';
       case 'operation-not-allowed':
         return 'E-posta/şifre girişi etkin değil.';
+      case 'username-taken':
+        return 'Bu kullanıcı adı zaten alınmış. Lütfen başka bir tane deneyin.';
       default:
         return 'Kayıt başarısız. Lütfen tekrar deneyin.';
     }
@@ -68,48 +74,33 @@ class _RegisterPageState extends State<RegisterPage> {
                         const SizedBox(height: 10),
                         Center(
                           child: Text(
-                            'Groupie',
+                            'Pulse',
                             style: TextStyle(
-                              fontSize: 42,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 46,
+                              fontWeight: FontWeight.w900,
                               color: Theme.of(context).colorScheme.primary,
                               height: 1,
+                              letterSpacing: 1.2,
                             ),
                           ).animate().fade(duration: 500.ms).slideY(begin: -0.2),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 10),
                         Center(
                           child: Text(
-                            'Hesap oluştur ve sohbete katıl',
+                            'Hesap oluştur ve Pulse dünyasına katıl!',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 14,
-                              color: isDark ? Colors.white60 : const Color(0xFF8B8B8B),
+                              fontSize: 15,
+                              color: isDark ? Colors.white70 : const Color(0xFF6B6B6B),
                             ),
                           ).animate().fade(delay: 200.ms).slideY(begin: 0.2),
                         ),
                         const SizedBox(height: 30),
                         Center(
-                          child: Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [
-                                  Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                                  Theme.of(context).colorScheme.secondary.withOpacity(0.2),
-                                ],
-                              ),
-                            ),
-                            child: Icon(
-                              FluentIcons.person_add_24_filled,
-                              size: 100,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ).animate().scale(delay: 400.ms, duration: 500.ms, curve: Curves.easeOutBack),
+                          child: const ChatAnimationWidget(),
                         ),
                         const SizedBox(height: 30),
-                        // Ad Soyad
+
                         TextFormField(
                           controller: _fullNameController,
                           keyboardType: TextInputType.name,
@@ -133,7 +124,34 @@ class _RegisterPageState extends State<RegisterPage> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        // Email
+
+                        TextFormField(
+                          controller: _usernameController,
+                          keyboardType: TextInputType.text,
+                          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                          decoration: modernTextInputDecoration(context).copyWith(
+                            labelText: 'Kullanıcı Adı',
+                            prefixIcon: Icon(
+                              FluentIcons.person_board_24_regular,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 24,
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Kullanıcı adı boş olamaz.';
+                            }
+                            if (value.trim().length < 3) {
+                              return 'En az 3 karakter girin.';
+                            }
+                            if (value.contains(' ')) {
+                              return 'Kullanıcı adı boşluk içeremez.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
@@ -159,7 +177,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        // Şifre
+
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
@@ -206,7 +224,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        // Şifre tekrar
+
                         TextFormField(
                           controller: _confirmController,
                           obscureText: _obscureConfirm,
@@ -303,32 +321,46 @@ class _RegisterPageState extends State<RegisterPage> {
 
     setState(() => _isLoading = true);
 
-    final result = await authService.registerWithEmailAndPasswordDetailed(
-      _fullNameController.text.trim(),
-      _emailController.text.trim(),
-      _passwordController.text.trim(),
-    );
+    final username = _usernameController.text.trim();
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+    try {
+      final result = await authService.registerWithEmailAndPasswordDetailed(
+        _fullNameController.text.trim(),
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+        username,
+      );
 
-    if (result == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kayıt başarılı! Lütfen e-postanızı doğrulayın.'),
-          backgroundColor: Colors.blue,
-        ),
-      );
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const EmailVerificationPage()),
-        (route) => false,
-      );
-    } else {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      if (result == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Kayıt başarılı! Lütfen e-postanızı doğrulayın.'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const EmailVerificationPage()),
+          (route) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_translateFirebaseError(result)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_translateFirebaseError(result)),
-          backgroundColor: Colors.red[700],
+          content: Text('Bir hata oluştu: $e'),
+          backgroundColor: Colors.red,
         ),
       );
     }
